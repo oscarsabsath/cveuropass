@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import type { CVData } from './types/cv';
-import { INITIAL_CV_DATA, EMPTY_CV_DATA } from './types/cv';
+import React, { useState, useEffect } from 'react';
+import type { CVData, CVProfile } from './types/cv';
+import { INITIAL_CV_DATA, EMPTY_CV_DATA, DEFAULT_PROFILES } from './types/cv';
 import { Header } from './components/Header';
+import { ProfileSelector } from './components/ProfileSelector';
 import { BottomNav } from './components/BottomNav';
 import { StepPersonalInfo } from './components/Wizard/StepPersonalInfo';
 import { StepProfile } from './components/Wizard/StepProfile';
@@ -15,7 +16,9 @@ import { ApiKeyModal } from './components/ApiKeyModal';
 import { AiAssistantModal } from './components/AiAssistantModal';
 import { EuropassPreview } from './components/EuropassPreview';
 
-const STORAGE_KEY = 'europass_cv_app_data_v1';
+const PROFILES_STORAGE_KEY = 'europass_cv_profiles_v2';
+const ACTIVE_PROFILE_KEY = 'europass_active_profile_id_v2';
+const LEGACY_STORAGE_KEY = 'europass_cv_app_data_v1';
 
 const STEP_TITLES = [
   'Datos y Foto',
@@ -29,31 +32,144 @@ const STEP_TITLES = [
 ];
 
 export const App: React.FC = () => {
-  // Load from localStorage or use initial example
-  const [cvData, setCvData] = useState<CVData>(() => {
+  // Load the 3 profiles from phone localStorage
+  const [profiles, setProfiles] = useState<CVProfile[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(PROFILES_STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= 3) {
+          return parsed;
+        }
+      }
+
+      // Check legacy single profile data to avoid data loss
+      const legacyData = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacyData) {
+        const parsedLegacy = JSON.parse(legacyData);
+        return [
+          {
+            id: 'profile-1',
+            name: 'Perfil 1: Principal',
+            updatedAt: new Date().toISOString(),
+            data: parsedLegacy,
+          },
+          DEFAULT_PROFILES[1],
+          DEFAULT_PROFILES[2],
+        ];
       }
     } catch (e) {
-      console.warn('Error reading saved CV data:', e);
+      console.warn('Error al leer perfiles guardados:', e);
     }
-    return INITIAL_CV_DATA;
+    return DEFAULT_PROFILES;
+  });
+
+  // Active profile ID ('profile-1' | 'profile-2' | 'profile-3')
+  const [activeProfileId, setActiveProfileId] = useState<string>(() => {
+    try {
+      const savedActive = localStorage.getItem(ACTIVE_PROFILE_KEY);
+      if (savedActive) return savedActive;
+    } catch (e) {
+      console.warn('Error reading active profile:', e);
+    }
+    return 'profile-1';
   });
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
 
-  // Auto-save to localStorage
+  // Auto-save profiles to localStorage on any change
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cvData));
+      localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(profiles));
+      localStorage.setItem(ACTIVE_PROFILE_KEY, activeProfileId);
     } catch (e) {
-      console.warn('Error saving CV to localStorage:', e);
+      console.warn('Error guardando en el celular:', e);
     }
-  }, [cvData]);
+  }, [profiles, activeProfileId]);
+
+  // Current active profile and its data
+  const activeProfile = profiles.find((p) => p.id === activeProfileId) || profiles[0];
+  const cvData = activeProfile.data;
+
+  // Update active profile CVData
+  const updateCurrentCvData = (newData: CVData) => {
+    setProfiles((prev) =>
+      prev.map((p) =>
+        p.id === activeProfile.id
+          ? {
+              ...p,
+              updatedAt: new Date().toISOString(),
+              data: newData,
+            }
+          : p
+      )
+    );
+  };
+
+  const handleSelectProfile = (id: string) => {
+    setActiveProfileId(id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleRenameProfile = (id: string, newName: string) => {
+    setProfiles((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, name: newName } : p))
+    );
+  };
+
+  const handleCloneProfile = (fromId: string, toId: string) => {
+    const sourceProfile = profiles.find((p) => p.id === fromId);
+    if (!sourceProfile) return;
+
+    setProfiles((prev) =>
+      prev.map((p) =>
+        p.id === toId
+          ? {
+              ...p,
+              updatedAt: new Date().toISOString(),
+              data: JSON.parse(JSON.stringify(sourceProfile.data)),
+            }
+          : p
+      )
+    );
+  };
+
+  const handleResetProfile = (id: string) => {
+    setProfiles((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              updatedAt: new Date().toISOString(),
+              data: EMPTY_CV_DATA,
+            }
+          : p
+      )
+    );
+    setCurrentStep(1);
+  };
+
+  const handleLoadExample = () => {
+    if (
+      window.confirm(
+        `¿Deseas cargar el currículum de ejemplo completo en "${activeProfile.name}"?`
+      )
+    ) {
+      updateCurrentCvData(INITIAL_CV_DATA);
+    }
+  };
+
+  const handleReset = () => {
+    if (
+      window.confirm(
+        `¿Estás seguro de vaciar todos los campos de "${activeProfile.name}" para empezar desde cero?`
+      )
+    ) {
+      handleResetProfile(activeProfile.id);
+    }
+  };
 
   const handleNext = () => {
     if (currentStep < STEP_TITLES.length) {
@@ -66,19 +182,6 @@ export const App: React.FC = () => {
     if (currentStep > 1) {
       setCurrentStep((prev) => prev - 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
-  const handleLoadExample = () => {
-    if (window.confirm('¿Deseas cargar el currículum de ejemplo completo para probar la app?')) {
-      setCvData(INITIAL_CV_DATA);
-    }
-  };
-
-  const handleReset = () => {
-    if (window.confirm('¿Estás seguro de que deseas vaciar todos los campos para empezar desde cero?')) {
-      setCvData(EMPTY_CV_DATA);
-      setCurrentStep(1);
     }
   };
 
@@ -98,13 +201,25 @@ export const App: React.FC = () => {
         onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
       />
 
+      {/* 3 Profile Selector Bar */}
+      <ProfileSelector
+        profiles={profiles}
+        activeProfileId={activeProfile.id}
+        onSelectProfile={handleSelectProfile}
+        onRenameProfile={handleRenameProfile}
+        onCloneProfile={handleCloneProfile}
+        onResetProfile={handleResetProfile}
+      />
+
       {/* Main Questionnaire Container */}
       <main className="flex-1 max-w-2xl w-full mx-auto p-4 sm:p-6 no-print">
         <div className="bg-white/80 backdrop-blur-xs rounded-3xl p-4 sm:p-7 shadow-sm border border-slate-200/80 mb-6">
           {currentStep === 1 && (
             <StepPersonalInfo
               personalInfo={cvData.personalInfo}
-              onChange={(personalInfo) => setCvData({ ...cvData, personalInfo })}
+              onChange={(personalInfo) =>
+                updateCurrentCvData({ ...cvData, personalInfo })
+              }
             />
           )}
 
@@ -112,8 +227,12 @@ export const App: React.FC = () => {
             <StepProfile
               targetJobTitle={cvData.targetJobTitle}
               summary={cvData.summary}
-              onJobTitleChange={(targetJobTitle) => setCvData({ ...cvData, targetJobTitle })}
-              onSummaryChange={(summary) => setCvData({ ...cvData, summary })}
+              onJobTitleChange={(targetJobTitle) =>
+                updateCurrentCvData({ ...cvData, targetJobTitle })
+              }
+              onSummaryChange={(summary) =>
+                updateCurrentCvData({ ...cvData, summary })
+              }
               onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
             />
           )}
@@ -121,14 +240,18 @@ export const App: React.FC = () => {
           {currentStep === 3 && (
             <StepExperience
               workExperience={cvData.workExperience}
-              onChange={(workExperience) => setCvData({ ...cvData, workExperience })}
+              onChange={(workExperience) =>
+                updateCurrentCvData({ ...cvData, workExperience })
+              }
             />
           )}
 
           {currentStep === 4 && (
             <StepEducation
               education={cvData.education}
-              onChange={(education) => setCvData({ ...cvData, education })}
+              onChange={(education) =>
+                updateCurrentCvData({ ...cvData, education })
+              }
             />
           )}
 
@@ -137,22 +260,30 @@ export const App: React.FC = () => {
               digitalSkills={cvData.digitalSkills}
               softSkills={cvData.softSkills}
               targetJobTitle={cvData.targetJobTitle}
-              onDigitalSkillsChange={(digitalSkills) => setCvData({ ...cvData, digitalSkills })}
-              onSoftSkillsChange={(softSkills) => setCvData({ ...cvData, softSkills })}
+              onDigitalSkillsChange={(digitalSkills) =>
+                updateCurrentCvData({ ...cvData, digitalSkills })
+              }
+              onSoftSkillsChange={(softSkills) =>
+                updateCurrentCvData({ ...cvData, softSkills })
+              }
             />
           )}
 
           {currentStep === 6 && (
             <StepLanguages
               languages={cvData.languages}
-              onChange={(languages) => setCvData({ ...cvData, languages })}
+              onChange={(languages) =>
+                updateCurrentCvData({ ...cvData, languages })
+              }
             />
           )}
 
           {currentStep === 7 && (
             <StepAdditional
               additionalInfo={cvData.additionalInfo}
-              onChange={(additionalInfo) => setCvData({ ...cvData, additionalInfo })}
+              onChange={(additionalInfo) =>
+                updateCurrentCvData({ ...cvData, additionalInfo })
+              }
             />
           )}
 
@@ -178,7 +309,7 @@ export const App: React.FC = () => {
 
       {/* Hidden container for print-only */}
       <div className="hidden print:block">
-        <EuropassPreview cvData={cvData} />
+        <EuropassPreview cvData={cvData} id="europass-cv-print-only" />
       </div>
 
       {/* AI Assistant Modal for Profile Writing */}
@@ -187,7 +318,9 @@ export const App: React.FC = () => {
         onClose={() => setIsAiAssistantOpen(false)}
         targetJobTitle={cvData.targetJobTitle}
         currentSummary={cvData.summary}
-        onSelectSummary={(newSummary) => setCvData({ ...cvData, summary: newSummary })}
+        onSelectSummary={(newSummary) =>
+          updateCurrentCvData({ ...cvData, summary: newSummary })
+        }
         onOpenApiKeyModal={() => {
           setIsAiAssistantOpen(false);
           setIsApiKeyModalOpen(true);

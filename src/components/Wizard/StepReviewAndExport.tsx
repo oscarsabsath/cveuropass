@@ -40,7 +40,7 @@ export const StepReviewAndExport: React.FC<StepReviewAndExportProps> = ({
     setDownloadSuccess(false);
 
     try {
-      const ok = await generateAndDownloadPdf('europass-cv-document', candidateFullName || 'Mi_Curriculum');
+      const ok = await generateAndDownloadPdf('europass-cv-export-source', candidateFullName || 'Mi_Curriculum');
       if (ok) {
         setDownloadSuccess(true);
         confetti({
@@ -307,6 +307,21 @@ export const StepReviewAndExport: React.FC<StepReviewAndExportProps> = ({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Unscaled 794px off-screen render container exclusively for 100% crisp PDF generation without mobile scaling distortions */}
+      <div
+        style={{
+          position: 'fixed',
+          top: '-15000px',
+          left: '-15000px',
+          width: '794px',
+          pointerEvents: 'none',
+          opacity: 0,
+          zIndex: -9999,
+        }}
+      >
+        <EuropassPreview cvData={cvData} id="europass-cv-export-source" />
       </div>
     </div>
   );

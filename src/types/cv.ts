@@ -247,3 +247,37 @@ export const EMPTY_CV_DATA: CVData = {
     honors: [],
   },
 };
+
+export interface CVProfile {
+  id: string; // 'profile-1' | 'profile-2' | 'profile-3'
+  name: string; // e.g. "Perfil 1 (Tecnología)"
+  updatedAt: string;
+  data: CVData;
+}
+
+export const DEFAULT_PROFILES: CVProfile[] = [
+  {
+    id: 'profile-1',
+    name: 'Perfil 1: Técnico / Tech',
+    updatedAt: new Date().toISOString(),
+    data: INITIAL_CV_DATA,
+  },
+  {
+    id: 'profile-2',
+    name: 'Perfil 2: Vacante B',
+    updatedAt: new Date().toISOString(),
+    data: {
+      ...EMPTY_CV_DATA,
+      targetJobTitle: 'Responsable de Proyectos / Operaciones',
+    },
+  },
+  {
+    id: 'profile-3',
+    name: 'Perfil 3: Vacante C',
+    updatedAt: new Date().toISOString(),
+    data: {
+      ...EMPTY_CV_DATA,
+      targetJobTitle: 'Atención al Cliente / Administrativo',
+    },
+  },
+];

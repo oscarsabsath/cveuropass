@@ -4,9 +4,13 @@ import { Mail, Phone, MapPin, Globe, Calendar, User, CheckCircle } from 'lucide-
 
 interface EuropassPreviewProps {
   cvData: CVData;
+  id?: string;
 }
 
-export const EuropassPreview: React.FC<EuropassPreviewProps> = ({ cvData }) => {
+export const EuropassPreview: React.FC<EuropassPreviewProps> = ({
+  cvData,
+  id = 'europass-cv-document',
+}) => {
   const {
     personalInfo,
     targetJobTitle,
@@ -34,7 +38,7 @@ export const EuropassPreview: React.FC<EuropassPreviewProps> = ({ cvData }) => {
 
   return (
     <div
-      id="europass-cv-document"
+      id={id}
       className="a4-page bg-white text-slate-800 mx-auto shadow-xl print:shadow-none border border-slate-200 print:border-none relative box-border overflow-hidden"
       style={{
         width: '210mm',

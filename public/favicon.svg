@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="128" fill="#0e417a"/>
+  <!-- Circle of EU Stars motif -->
+  <circle cx="256" cy="180" r="110" fill="none" stroke="#facc15" stroke-width="8" stroke-dasharray="10 35"/>
+  <!-- File Document icon -->
+  <path d="M190 260h132c11 0 20 9 20 20v140c0 11-9 20-20 20H190c-11 0-20-9-20-20V280c0-11 9-20 20-20z" fill="#ffffff"/>
+  <!-- Text lines -->
+  <rect x="210" y="300" width="92" height="10" rx="5" fill="#0e417a"/>
+  <rect x="210" y="325" width="92" height="8" rx="4" fill="#94a3b8"/>
+  <rect x="210" y="345" width="70" height="8" rx="4" fill="#94a3b8"/>
+  <rect x="210" y="365" width="85" height="8" rx="4" fill="#94a3b8"/>
+  <!-- Star in center -->
+  <polygon points="256,130 268,168 308,168 276,192 288,230 256,206 224,230 236,192 204,168 244,168" fill="#facc15"/>
+</svg>
